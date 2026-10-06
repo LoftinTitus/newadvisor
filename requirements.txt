@@ -1,0 +1,9 @@
+# Pinned versions, tested with Python 3.13.
+pymupdf==1.28.2              # read PDFs (keeps page numbers)
+python-docx==1.2.0           # read Word .docx files
+beautifulsoup4==4.15.0       # strip HTML from saved Canvas pages
+sentence-transformers==6.1.0 # local embedding model (no API key needed)
+chromadb==1.5.9              # local vector database
+anthropic==1.11.0            # Claude API client
+streamlit==1.65.0            # chat web UI
+python-dotenv==1.2.4         # load settings from .env

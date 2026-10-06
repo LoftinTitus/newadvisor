@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Source documents (may not be ours to publish) and the database built from them
+documents/
+data/raw/
+data/chroma/*
+!data/chroma/.gitkeep
+
+# Generated files
+chunks_preview.txt
+eval/results.csv
+
+# OS / editor
+.DS_Store
+.vscode/

@@ -14,7 +14,7 @@ Going one phase at a time matters: AI assistants do much better on small, testab
 
 ## Project goal (for the AI)
 
-You are helping me build a retrieval-augmented generation (RAG) chatbot that answers academic advising questions for [MAJOR] at [UNIVERSITY]. It must answer only from my documents and cite which document each answer came from. Do not fine-tune or train any model.
+You are helping me build a retrieval-augmented generation (RAG) chatbot that answers academic advising questions for Chemical Engineering at The University of Texas at Austin. It must answer only from my documents and cite which document each answer came from. Do not fine-tune or train any model.
 
 The source documents are: advising Canvas pages, past syllabi, the student handbook, the course catalog / degree requirements, and advising FAQs. They will be PDFs, .docx files, .html pages saved from Canvas, and .txt/.md files in `data/raw/`.
 
@@ -134,7 +134,7 @@ Build in this order and stop after each phase until I confirm its test passes.
 Put this text in `prompts.py` as `SYSTEM_PROMPT`, filling in the brackets from config.
 
 ```
-You are an academic advising assistant for [MAJOR] students at [UNIVERSITY].
+You are an academic advising assistant for Chemical Engineering students at The University of Texas at Austin.
 
 You answer ONLY from the numbered source excerpts provided with each question.
 - Cite every factual claim with its source number, like [2].
@@ -171,8 +171,8 @@ Follow these in every session.
 
 Replace the brackets throughout the file, then tick these off.
 
-- [ ] University name: [UNIVERSITY]
-- [ ] Major / program: [MAJOR]
+- [ ] University name: The University of Texas at Austin
+- [ ] Major / program: Chemical Engineering
 - [ ] Catalog years to include: [e.g. 2023-24, 2024-25, 2025-26]
 - [ ] Anthropic API key created at console.anthropic.com and pasted into `.env` (with a monthly spend limit set)
 - [ ] Documents downloaded into `data/raw/` subfolders, with the year in each file name
