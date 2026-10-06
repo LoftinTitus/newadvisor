@@ -28,6 +28,7 @@ EVAL_DIR = PROJECT_DIR / "eval"
 # --- Chunking (Phase 1) ------------------------------------------------------
 CHUNK_SIZE_WORDS = 350  # target chunk length (spec: about 300-400 words)
 CHUNK_OVERLAP_WORDS = 50  # words repeated between neighboring chunks
+MIN_CHUNK_WORDS = 60  # chunks shorter than this get merged with a neighbor
 
 # --- Embeddings and retrieval (Phase 2) --------------------------------------
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
@@ -37,10 +38,11 @@ TOP_K = 6  # how many chunks to retrieve per question
 
 # --- Answering (Phase 3) -----------------------------------------------------
 # If the best chunk's similarity score is below this, skip the LLM and say the
-# documents don't cover the question. Tune this after Phase 2.
-MIN_SCORE = 0.5
+# documents don't cover the question. In testing, real advising questions
+# scored 0.68+ and off-topic ones (pizza, weather) 0.43-0.56.
+MIN_SCORE = 0.6
 HISTORY_TURNS = 4  # past chat turns sent along for follow-up questions
-LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5-20251001")
+LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5")
 MAX_ANSWER_TOKENS = 1024
 
 
