@@ -6,3 +6,21 @@ headless = true        # don't ask for an email on first run
 
 [browser]
 gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"  # hide developer menu items in the top-right corner
+
+# Look and feel: UT burnt orange accent on a warm off-white page.
+[theme]
+base = "light"
+primaryColor = "#BF5700"
+backgroundColor = "#FCFBF9"
+secondaryBackgroundColor = "#F4F1EC"
+textColor = "#1F1F1F"
+linkColor = "#BF5700"
+borderColor = "#E7E2DA"
+baseRadius = "0.75rem"
+showSidebarBorder = true
+
+[theme.sidebar]
+backgroundColor = "#F7F4EF"

@@ -282,7 +282,15 @@ def ask_llm(system: str, messages: list[dict], max_tokens: int) -> str:
         raise SystemExit("The API key was rejected. Check ANTHROPIC_API_KEY in .env.")
     except anthropic.NotFoundError:
         raise SystemExit(f"Model '{config.LLM_MODEL}' not found. Check LLM_MODEL in .env.")
-    except anthropic.RateLimitError:
+    except anthropic.BadRequestError as err:
+        if "usage limits" in str(err):  # the spend limit you set in the Console
+            raise RuntimeError("The monthly spend limit set in the Claude Console has been "
+                               "reached. Raise it there (Settings > Billing) or wait until next month.")
+        raise RuntimeError(f"The Anthropic API rejected the request: {err.message}")
+    except anthropic.RateLimitError as err:
+        if "enforced_spend_limit_reached" in str(err.body):  # the tier's monthly cap
+            raise RuntimeError("This account's monthly API spend cap has been reached; "
+                               "access resumes at the start of next month.")
         raise RuntimeError("Too many requests right now. Wait a minute and try again.")
     except anthropic.APIConnectionError:
         raise RuntimeError("Couldn't reach the Anthropic API. Check your internet connection.")

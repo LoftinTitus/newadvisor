@@ -66,6 +66,14 @@ HISTORY_TURNS = 4  # past chat turns sent along for follow-up questions
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5")
 MAX_ANSWER_TOKENS = 1024
 
+# --- Web page limits -----------------------------------------------------------
+# Simple per-browser-session limits so a runaway session can't run up the API
+# bill. Refreshing the page starts a new session, so this is NOT protection
+# for a public site (that's Phase 6); the real safety net is the monthly spend
+# limit set in the Anthropic Console.
+RATE_LIMIT_PER_MINUTE = 10
+RATE_LIMIT_PER_SESSION = 50
+
 
 def get_api_key() -> str:
     """Return the Anthropic API key, or stop with a clear message if it's missing.
