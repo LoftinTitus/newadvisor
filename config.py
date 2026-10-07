@@ -49,6 +49,7 @@ RRF_K = 60  # rank-fusion constant; the standard value, rarely needs changing
 KEYWORD_WEIGHT = 1.0  # how much the keyword ranking counts vs. the meaning ranking (1.0)
 MAX_PER_SOURCE = 3  # at most this many chunks from any one file per answer
 MAX_SCORE_GAP = 0.12  # drop chunks this much less similar than the best match
+KEYWORD_KEEP = 3  # ...except the top keyword matches, which are always kept
 DUPLICATE_SIMILARITY = 0.95  # two results more alike than this are copies; keep one
 # Per-document-type limits on chunks per answer. There are 50+ syllabi with
 # lots of repeated text, so they could otherwise fill every slot.
@@ -93,6 +94,10 @@ QUERY_EXPANSIONS = {
     "p/f": "pass/fail",
     "acc": "Austin Community College transfer credit",
     "apply to graduate": "intent to graduate form",
+    "put off": "latest semester to take",
+    "push back": "latest semester to take",
+    "delay": "latest semester to take",
+    "postpone": "latest semester to take",
     "first semester": "first year fall semester",
     "freshman": "first year",
     "sophomore": "second year",

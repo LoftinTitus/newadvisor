@@ -92,7 +92,11 @@ def course_keys(text: str) -> set[str]:
 
 STOPWORDS = {"a", "an", "and", "are", "as", "at", "be", "can", "do", "does", "for", "how",
              "i", "if", "in", "is", "it", "my", "of", "on", "or", "should", "the", "to",
-             "what", "when", "where", "which", "who", "will", "with", "you", "your", "me"}
+             "what", "when", "where", "which", "who", "will", "with", "you", "your", "me",
+             # everyday question words that match hundreds of chunks
+             "there", "many", "much", "take", "taking", "one", "get", "need", "any", "about",
+             "would", "could", "im", "just", "still", "this", "that", "have", "has", "am",
+             "was", "were", "been", "so", "from", "by", "we", "our", "us", "they", "them"}
 
 
 # Different spellings of the same idea, mapped to one word for keyword search.
@@ -240,9 +244,12 @@ def retrieve(question: str, top_k: int = config.TOP_K,
     # chunk much less similar in meaning than the best one.
     floor = max(h["score"] for h in hits.values()) - config.MAX_SCORE_GAP
 
+    # ...but a top keyword match is strong evidence by itself, so it's kept.
+    keyword_best = set(by_keyword[:config.KEYWORD_KEEP])
+
     results, per_source, per_type = [], Counter(), Counter()
     for cid, _ in fused.most_common():
-        if hits[cid]["score"] < floor:
+        if hits[cid]["score"] < floor and cid not in keyword_best:
             continue
         meta = hits[cid]["metadata"]
         type_cap = config.MAX_PER_DOC_TYPE.get(meta["doc_type"], top_k)
@@ -256,6 +263,15 @@ def retrieve(question: str, top_k: int = config.TOP_K,
             per_type[meta["doc_type"]] += 1
         if len(results) == top_k:
             break
+
+    # Each method's single best match always makes the cut: the #1 chunk by
+    # meaning or by keywords is rarely irrelevant, but fusion can bury it when
+    # the other method ranks it low.
+    for best in (by_meaning[:1] + by_keyword[:1]):
+        if all(hits[best] is not h for h in results) and hits[best]["score"] >= floor:
+            if len(results) == top_k:
+                results.pop()  # drop the weakest fused result
+            results.append(hits[best])
     return [{k: v for k, v in hit.items() if k != "vec"} for hit in results]
 
 

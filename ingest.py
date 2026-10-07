@@ -33,6 +33,8 @@ Unit = dict
 INVISIBLE = re.compile(r"[​‌‍⁠﻿­]")
 BULLETS = re.compile(r"^\s*[●■•▪◦▫○◆➢➤►]\s*")
 HEADING_SIZE_RATIO = 1.25  # text this much bigger than body text is a heading
+# A course catalog entry: "CHE X39. Introduction to Biochemical Engineering."
+COURSE_ENTRY = re.compile(r"^[A-Z]{1,4}(?: [A-Z])? X?\d{0,2}\d[A-Z]{0,2}(?:\.\d+)?\. [^.]{3,90}\.")
 TABLE_CAPTION_WORDS = 40  # a paragraph this short right before a table is its caption
 PAGE_NUMBER = re.compile(r"^(page\s*)?\d{1,3}(\s*(of|/)\s*\d{1,3})?$", re.IGNORECASE)
 
@@ -300,6 +302,13 @@ def is_heading(block: dict, text: str, body_size: float) -> bool:
             and any(c.isalpha() for c in text) and not text.endswith("."))
 
 
+def is_caps_label(line: str) -> bool:
+    """'GRADING:' or 'OFFICE HOURS' -- short, all capitals, at least 4 letters."""
+    letters = [c for c in line if c.isalpha()]
+    return (len(line.split()) <= 5 and len(letters) >= 4 and line.upper() == line
+            and not re.search(r"\d", line))
+
+
 def load_pdf(path: Path) -> list[Unit]:
     """Read a PDF page by page. Tables become row-per-line text; everything
     else is read as paragraph blocks in reading order. Headings (big text)
@@ -342,10 +351,18 @@ def load_pdf(path: Path) -> list[Unit]:
         page_units: list[Unit] = []
         for _, kind, text in items:
             if kind == "table":
+                if pending_heading:  # keep a heading with the table under it
+                    text, pending_heading = f"{pending_heading}\n{text}", ""
                 page_units.append({"text": text, "page": page_no, "section": section, "kind": "table"})
                 continue
             lines = [clean_line(l) for l in text.splitlines()]
             lines = [l for l in lines if l and mask_digits(l) not in repeated]
+            # A short ALL-CAPS label at the start of a block ("GRADING:",
+            # "TEXTBOOK:") is a heading too, even in normal-size text.
+            if kind == "text" and lines and is_caps_label(lines[0]):
+                pending_heading = f"{pending_heading} {lines[0].rstrip(':')}".strip()
+                section = pending_heading
+                lines = lines[1:]
             if kind == "heading":
                 heading = " ".join(lines)
                 if heading and " ".join(clean_line(text).split()) not in banners:
@@ -356,6 +373,8 @@ def load_pdf(path: Path) -> list[Unit]:
             joined = join_block_lines(lines)
             if not joined:
                 continue
+            if entry := COURSE_ENTRY.match(joined):  # "CHE X39. Introduction to ..."
+                section = entry.group(0).strip()
             if pending_heading:  # keep a heading with the paragraph under it
                 joined, pending_heading = f"{pending_heading}\n{joined}", ""
             prev = page_units[-1] if page_units else None
@@ -634,7 +653,7 @@ def load_all() -> list[dict]:
 
 # Bump this when ingest.py changes how chunks are made, so every file is
 # re-processed on the next run even though the files themselves didn't change.
-PIPELINE_VERSION = "6"
+PIPELINE_VERSION = "9"
 
 
 def file_hash(path: Path) -> str:
