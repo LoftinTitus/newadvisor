@@ -28,6 +28,7 @@ SKIP_FILES = [
     "Curriculum/2026-2028 CHE Suggested Arrangement of Courses.pdf",
     "Curriculum/CHE Prerequisite Flowchart.pdf",
     "Policies/Latest You Can Take Courses With Prereqs.pdf",
+    "Curriculum/4 hr ch elective.pdf",
 ]
 CHROMA_DIR = PROJECT_DIR / "data" / "chroma"  # vector database, built by ingest.py
 COLLECTION_NAME = "advisor_docs"
@@ -42,16 +43,62 @@ MIN_CHUNK_WORDS = 60  # chunks shorter than this get merged with a neighbor
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 # BGE models search better when queries (not documents) start with this text.
 QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
-TOP_K = 6  # how many chunks to retrieve per question
+TOP_K = 8  # how many chunks to retrieve per question
 CANDIDATE_MULTIPLIER = 5  # each search method proposes TOP_K x this many chunks
 RRF_K = 60  # rank-fusion constant; the standard value, rarely needs changing
 KEYWORD_WEIGHT = 1.0  # how much the keyword ranking counts vs. the meaning ranking (1.0)
-MAX_PER_SOURCE = 2  # at most this many chunks from any one file per answer
+MAX_PER_SOURCE = 3  # at most this many chunks from any one file per answer
 MAX_SCORE_GAP = 0.12  # drop chunks this much less similar than the best match
 DUPLICATE_SIMILARITY = 0.95  # two results more alike than this are copies; keep one
 # Per-document-type limits on chunks per answer. There are 50+ syllabi with
 # lots of repeated text, so they could otherwise fill every slot.
-MAX_PER_DOC_TYPE = {"syllabi": 3}
+MAX_PER_DOC_TYPE = {"syllabi": 4}
+
+# Student shorthand -> the words the documents use. When a question contains
+# the shorthand (whole word, any capitalization), the document words are added
+# to the search. Add your own as you notice students using them.
+QUERY_EXPANSIONS = {
+    "orgo": "organic chemistry",
+    "ochem": "organic chemistry",
+    "o-chem": "organic chemistry",
+    "pchem": "physical chemistry",
+    "p-chem": "physical chemistry",
+    "gen chem": "principles of chemistry",
+    "thermo": "thermodynamics",
+    "diffeq": "differential equations",
+    "diff eq": "differential equations",
+    "calc 1": "differential and integral calculus",
+    "calc 2": "sequences, series, and multivariable calculus",
+    "calc 3": "advanced calculus for applications",
+    "calc": "calculus",
+    "physics 1": "engineering physics I",
+    "physics 2": "engineering physics II",
+    "stats": "applied statistics",
+    "num methods": "numerical methods",
+    "seps": "separation processes mass transfer",
+    "separations": "separation processes mass transfer",
+    "reactors": "chemical reactor analysis",
+    "kinetics": "chemical reactor analysis",
+    "controls": "process control",
+    "capstone": "process design and operations",
+    "senior design": "process design and operations",
+    "biochem e": "biochemical engineering",
+    "te": "technical elective",
+    "tes": "technical electives",
+    "tech elective": "technical elective",
+    "chem e": "chemical engineering",
+    "cheme": "chemical engineering",
+    "ess": "Engineering Student Services",
+    "ida": "interactive degree audit",
+    "p/f": "pass/fail",
+    "acc": "Austin Community College transfer credit",
+    "apply to graduate": "intent to graduate form",
+    "first semester": "first year fall semester",
+    "freshman": "first year",
+    "sophomore": "second year",
+    "junior": "third year",
+    "senior": "fourth year",
+}
 
 # UT catalogs run two years. These are the choices in the web page's
 # "catalog year" selector, newest first.
@@ -59,9 +106,11 @@ CATALOG_YEARS = ["2026-28", "2024-26", "2022-24", "2020-22"]
 
 # --- Answering (Phase 3) -----------------------------------------------------
 # If the best chunk's similarity score is below this, skip the LLM and say the
-# documents don't cover the question. In testing, real advising questions
-# scored 0.68+ and off-topic ones (pizza, weather) 0.43-0.56.
-MIN_SCORE = 0.6
+# documents don't cover the question. Scores alone can't perfectly separate
+# on- and off-topic questions (in testing "learn guitar" scored 0.63 while a
+# real question about M 427J scored 0.59), so this only blocks clear nonsense
+# (pizza, sports: under 0.48); the LLM declines borderline ones itself.
+MIN_SCORE = 0.5
 HISTORY_TURNS = 4  # past chat turns sent along for follow-up questions
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5")
 MAX_ANSWER_TOKENS = 1024

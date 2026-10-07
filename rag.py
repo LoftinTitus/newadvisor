@@ -50,6 +50,14 @@ def get_collection() -> chromadb.Collection:
     )
 
 
+def passage_header(meta: dict) -> str:
+    """Document title and section put in front of a chunk when embedding and
+    keyword-indexing it, so e.g. a chunk under 'STUDY ABROAD' in the ESS
+    guide is findable even if its own text never says 'study abroad'."""
+    section = meta.get("section", "")
+    return f"{meta['title']}" + (f" | {section}" if section and section != meta["title"] else "") + "\n\n"
+
+
 def embed_passages(texts: list[str]) -> list[list[float]]:
     """Embed document chunks. Vectors are normalized to length 1 so cosine
     similarity is a simple dot product."""
@@ -90,7 +98,11 @@ STOPWORDS = {"a", "an", "and", "are", "as", "at", "be", "can", "do", "does", "fo
 # Different spellings of the same idea, mapped to one word for keyword search.
 SYNONYMS = [(re.compile(r"\bpre[- ]?req(uisite)?s?\b", re.I), "prerequisite"),
             (re.compile(r"\bco[- ]?req(uisite)?s?\b", re.I), "corequisite"),
-            (re.compile(r"\bq[- ]?drop", re.I), "qdrop")]
+            (re.compile(r"\bq[- ]?drop", re.I), "qdrop"),
+            (re.compile(r"\b(re-?take|repetition|repeating)\b", re.I), "repeat"),
+            (re.compile(r"\b(textbooks?|required texts?)\b", re.I), "textbook"),
+            (re.compile(r"\b(labs?|laboratory|laboratories)\b", re.I), "laboratory"),
+            (re.compile(r"\b(limits?|max|maximum)\b", re.I), "maximum")]
 
 
 def tokenize(text: str) -> list[str]:
@@ -146,13 +158,29 @@ class KeywordIndex:
         return [cid for _, cid in sorted(scores, reverse=True)[:limit]]
 
 
+def database_version() -> tuple[int, float]:
+    """Changes whenever ingest.py writes to the database (chunk count plus the
+    database file's last-modified time), so cached indexes know to rebuild."""
+    db_file = config.CHROMA_DIR / "chroma.sqlite3"
+    return get_collection().count(), (db_file.stat().st_mtime if db_file.exists() else 0.0)
+
+
 @lru_cache(maxsize=1)
-def keyword_index(chunk_count: int) -> tuple[KeywordIndex, dict[str, dict]]:
+def keyword_index(version: tuple[int, float]) -> tuple[KeywordIndex, dict[str, dict]]:
     """Build the keyword index over every chunk (title + text), plus {id: metadata}.
-    chunk_count is part of the cache key so the index rebuilds after re-ingesting."""
+    `version` (from database_version) is the cache key, so the index rebuilds
+    after re-ingesting, even if the number of chunks didn't change."""
     data = get_collection().get(include=["documents", "metadatas"])
-    texts = [f"{m['title']} {d}" for d, m in zip(data["documents"], data["metadatas"])]
+    texts = [passage_header(m) + d for d, m in zip(data["documents"], data["metadatas"])]
     return KeywordIndex(data["ids"], texts), dict(zip(data["ids"], data["metadatas"]))
+
+
+def expand_query(question: str) -> str:
+    """Add the documents' wording for student shorthand ("orgo" -> "organic
+    chemistry"), using config.QUERY_EXPANSIONS."""
+    extra = [words for short, words in config.QUERY_EXPANSIONS.items()
+             if re.search(rf"(?<![\w/-]){re.escape(short)}(?![\w/-])", question, re.IGNORECASE)]
+    return question + (" (" + "; ".join(extra) + ")" if extra else "")
 
 
 def retrieve(question: str, top_k: int = config.TOP_K,
@@ -175,8 +203,9 @@ def retrieve(question: str, top_k: int = config.TOP_K,
     if collection.count() == 0:
         raise SystemExit("The database is empty. Run: python ingest.py")
 
+    question = expand_query(question)
     pool = top_k * config.CANDIDATE_MULTIPLIER
-    index, metas = keyword_index(collection.count())
+    index, metas = keyword_index(database_version())
     years = {m["catalog_year"] for m in metas.values()}
     ok_years = [y for y in years if year_matches(y, catalog_year)]
     where = {"catalog_year": {"$in": ok_years}} if catalog_year else None

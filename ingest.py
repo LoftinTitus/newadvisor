@@ -32,6 +32,8 @@ Unit = dict
 # Invisible characters that PDFs and Word sprinkle into text.
 INVISIBLE = re.compile(r"[​‌‍⁠﻿­]")
 BULLETS = re.compile(r"^\s*[●■•▪◦▫○◆➢➤►]\s*")
+HEADING_SIZE_RATIO = 1.25  # text this much bigger than body text is a heading
+TABLE_CAPTION_WORDS = 40  # a paragraph this short right before a table is its caption
 PAGE_NUMBER = re.compile(r"^(page\s*)?\d{1,3}(\s*(of|/)\s*\d{1,3})?$", re.IGNORECASE)
 
 
@@ -277,14 +279,38 @@ def table_to_text(rows: list[list[str]], state: dict) -> str:
 # Loaders: one per file type. Each returns a list of units.
 # --------------------------------------------------------------------------
 
+def body_font_size(pages: list[dict]) -> float:
+    """The most common font size in the document (by characters): its body text."""
+    sizes: Counter[float] = Counter()
+    for page in pages:
+        for block in page["blocks"]:
+            for line in block.get("lines", []):
+                for span in line["spans"]:
+                    sizes[round(span["size"], 1)] += len(span["text"].strip())
+    return sizes.most_common(1)[0][0] if sizes else 0.0
+
+
+def is_heading(block: dict, text: str, body_size: float) -> bool:
+    """A heading is short text noticeably bigger than the body text, like
+    'STUDY ABROAD' or 'Repetition of a Course'. (Bold alone doesn't count: these
+    PDFs bold whole sentences for emphasis.)"""
+    size = max((span["size"] for line in block["lines"] for span in line["spans"]), default=0)
+    words = text.split()
+    return (size >= body_size * HEADING_SIZE_RATIO and 1 <= len(words) <= 12
+            and any(c.isalpha() for c in text) and not text.endswith("."))
+
+
 def load_pdf(path: Path) -> list[Unit]:
     """Read a PDF page by page. Tables become row-per-line text; everything
-    else is read as paragraph blocks in reading order."""
+    else is read as paragraph blocks in reading order. Headings (big text)
+    become the section name for the paragraphs under them."""
     doc = pymupdf.open(path)
     table_state: dict = {}
+    page_dicts = [page.get_text("dict", sort=True) for page in doc]
+    body_size = body_font_size(page_dicts)
     raw_pages: list[list[tuple[float, str, str]]] = []  # (y, kind, text) per page
 
-    for page in doc:
+    for page, page_dict in zip(doc, page_dicts):
         items: list[tuple[float, str, str]] = []
         tables = page.find_tables().tables
         table_boxes = [pymupdf.Rect(t.bbox) for t in tables]
@@ -292,42 +318,72 @@ def load_pdf(path: Path) -> list[Unit]:
             text = table_to_text(t.extract(), table_state)
             if text:
                 items.append((box.y0, "table", text))
-        # Text blocks: (x0, y0, x1, y1, text, block_no, block_type). Type 0 is text.
-        for x0, y0, x1, y1, text, _, btype in page.get_text("blocks", sort=True):
-            if btype != 0 or any(pymupdf.Rect(x0, y0, x1, y1).intersects(b) for b in table_boxes):
-                continue
-            items.append((y0, "text", text))
+        for block in page_dict["blocks"]:
+            if block["type"] != 0 or any(pymupdf.Rect(block["bbox"]).intersects(b) for b in table_boxes):
+                continue  # images, and text that's part of a table
+            text = "\n".join("".join(span["text"] for span in line["spans"]) for line in block["lines"])
+            kind = "heading" if is_heading(block, " ".join(clean_line(text).split()), body_size) else "text"
+            items.append((block["bbox"][1], kind, text))
         items.sort(key=lambda it: it[0])
         raw_pages.append(items)
 
     # Header/footer detection looks at the first and last lines of each page.
-    page_lines = [[clean_line(l) for _, kind, txt in items if kind == "text"
+    page_lines = [[clean_line(l) for _, kind, txt in items if kind != "table"
                    for l in txt.splitlines() if clean_line(l)] for items in raw_pages]
     repeated = repeated_edge_lines(page_lines)
+    # Big text that shows up on 3+ pages is a page banner, not a section heading.
+    heading_counts = Counter(" ".join(clean_line(txt).split())
+                             for items in raw_pages for _, kind, txt in items if kind == "heading")
+    banners = {h for h, n in heading_counts.items() if n >= 3}
 
     units: list[Unit] = []
+    section, pending_heading = "", ""
     for page_no, items in enumerate(raw_pages, start=1):
         page_units: list[Unit] = []
         for _, kind, text in items:
             if kind == "table":
-                page_units.append({"text": text, "page": page_no, "section": "", "kind": "table"})
+                page_units.append({"text": text, "page": page_no, "section": section, "kind": "table"})
                 continue
             lines = [clean_line(l) for l in text.splitlines()]
             lines = [l for l in lines if l and mask_digits(l) not in repeated]
+            if kind == "heading":
+                heading = " ".join(lines)
+                if heading and " ".join(clean_line(text).split()) not in banners:
+                    # Two headings in a row are one heading split across blocks.
+                    pending_heading = f"{pending_heading} {heading}".strip()
+                    section = pending_heading
+                continue
             joined = join_block_lines(lines)
             if not joined:
                 continue
+            if pending_heading:  # keep a heading with the paragraph under it
+                joined, pending_heading = f"{pending_heading}\n{joined}", ""
             prev = page_units[-1] if page_units else None
-            if prev and prev["kind"] == "text" and continues_sentence(prev["text"], joined):
+            if (prev and prev["kind"] == "text" and prev["section"] == section
+                    and continues_sentence(prev["text"], joined)):
                 prev["text"] += " " + joined  # PDF split one paragraph into blocks
             else:
-                page_units.append({"text": joined, "page": page_no, "section": "", "kind": "text"})
+                page_units.append({"text": joined, "page": page_no, "section": section, "kind": "text"})
         # Drop a bare page number at the very top or bottom of the page.
         for idx in (0, -1):
             if page_units and PAGE_NUMBER.match(page_units[idx]["text"]):
                 page_units.pop(idx)
-        units.extend(page_units)
+        units.extend(attach_captions(page_units))
     return units
+
+
+def attach_captions(page_units: list[Unit]) -> list[Unit]:
+    """Keep a short line introducing a table (like 'Grading:') together with
+    the table, so the table can be found by the words in its caption."""
+    out: list[Unit] = []
+    for unit in page_units:
+        prev = out[-1] if out else None
+        if (unit["kind"] == "table" and prev and prev["kind"] == "text"
+                and word_count(prev["text"]) <= TABLE_CAPTION_WORDS):
+            out[-1] = {**unit, "text": f"{prev['text']}\n{unit['text']}"}
+        else:
+            out.append(unit)
+    return out
 
 
 def load_docx(path: Path) -> list[Unit]:
@@ -578,7 +634,7 @@ def load_all() -> list[dict]:
 
 # Bump this when ingest.py changes how chunks are made, so every file is
 # re-processed on the next run even though the files themselves didn't change.
-PIPELINE_VERSION = "4"
+PIPELINE_VERSION = "6"
 
 
 def file_hash(path: Path) -> str:
@@ -623,7 +679,7 @@ def embed_and_store() -> None:
             continue
         # The title goes into the embedded text so that, e.g., "CHE 360 syllabus"
         # matches chunks from that file even when the chunk never says "CHE 360".
-        vectors = rag.embed_passages([f"{c['title']}\n\n{c['text']}" for c in chunks])
+        vectors = rag.embed_passages([rag.passage_header(c) + c["text"] for c in chunks])
         collection.add(
             ids=[f"{source}::{c['chunk_index']}" for c in chunks],
             documents=[c["text"] for c in chunks],

@@ -66,6 +66,10 @@ Run these with the virtual environment turned on (`source ~/.venvs/newadvisor/bi
 
 Add `--year 2026-28` to `--search` or `--ask` to limit results to one catalog year. Documents with no year are always included.
 
+## Teaching it student shorthand
+
+If students call something by a nickname the documents never use ("orgo", "TEs", "thermo"), add it to `QUERY_EXPANSIONS` in `config.py`: the nickname on the left, the words the documents use on the right. No re-ingesting needed; restart the website to pick it up.
+
 ## Documents that are pictures
 
 Some PDFs are graphics (flowcharts, colored grids), so their text comes out scrambled. For these there's a hand-typed `(transcribed).md` file next to the PDF, and the PDF is listed in `SKIP_FILES` in `config.py` so it stays out of the database:

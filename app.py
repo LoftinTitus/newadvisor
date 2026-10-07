@@ -36,7 +36,7 @@ def warm_up() -> int:
     """Load the embedding model and keyword index once, not on every message.
     Returns how many documents are searchable."""
     rag.get_model()
-    _, metas = rag.keyword_index(rag.get_collection().count())
+    _, metas = rag.keyword_index(rag.database_version())
     return len({m["source"] for m in metas.values()})
 
 
