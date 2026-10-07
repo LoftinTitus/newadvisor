@@ -49,8 +49,19 @@ Run these with the venv turned on (`source venv/bin/activate`).
 | `python ingest.py --dry-run` | Only splits the documents into chunks and writes 10 random ones to `chunks_preview.txt`, so you can check them. Doesn't touch the database. |
 | `python rag.py --search "your question"` | Shows the passages that best match a question, with their scores. No API key needed. |
 | `python rag.py --ask "your question"` | Answers the question with citations, using Claude. Needs your API key in `.env`. |
+| `python rag.py --chat` | A back-and-forth chat in the terminal, for testing follow-up questions. Add `--debug` to see what it searched for. Needs your API key. |
 
 Add `--year 2026-28` to `--search` or `--ask` to limit results to one catalog year. Documents with no year are always included.
+
+## Documents that are pictures
+
+Some PDFs are graphics (flowcharts, colored grids), so their text comes out scrambled. For these there's a hand-typed `(transcribed).md` file next to the PDF, and the PDF is listed in `SKIP_FILES` in `config.py` so it stays out of the database:
+
+- `Curriculum/2026-2028 CHE Suggested Arrangement of Courses (transcribed).md`
+- `Curriculum/2026-2028 CHE Prerequisite Flowchart rules (transcribed).md`
+- `Policies/Latest You Can Take Courses With Prereqs (transcribed).md`
+
+If one of those PDFs gets a new version, update its `.md` file too.
 
 ## Where things are
 

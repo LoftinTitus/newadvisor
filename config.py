@@ -21,6 +21,14 @@ PROJECT_DIR = Path(__file__).resolve().parent
 # Source documents. The subfolder a file sits in (Curriculum, Policies,
 # Syllabi, ...) becomes its doc_type; files directly in here get "general".
 RAW_DIR = PROJECT_DIR / "documents"
+# Files under RAW_DIR to leave out of the database. These PDFs are graphics
+# whose text comes out scrambled; each has a hand-typed "(transcribed).md"
+# version next to it that is used instead.
+SKIP_FILES = [
+    "Curriculum/2026-2028 CHE Suggested Arrangement of Courses.pdf",
+    "Curriculum/CHE Prerequisite Flowchart.pdf",
+    "Policies/Latest You Can Take Courses With Prereqs.pdf",
+]
 CHROMA_DIR = PROJECT_DIR / "data" / "chroma"  # vector database, built by ingest.py
 COLLECTION_NAME = "advisor_docs"
 EVAL_DIR = PROJECT_DIR / "eval"
@@ -35,6 +43,14 @@ EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 # BGE models search better when queries (not documents) start with this text.
 QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 TOP_K = 6  # how many chunks to retrieve per question
+CANDIDATE_MULTIPLIER = 5  # each search method proposes TOP_K x this many chunks
+RRF_K = 60  # rank-fusion constant; the standard value, rarely needs changing
+KEYWORD_WEIGHT = 1.0  # how much the keyword ranking counts vs. the meaning ranking (1.0)
+MAX_PER_SOURCE = 2  # at most this many chunks from any one file per answer
+MAX_SCORE_GAP = 0.12  # drop chunks this much less similar than the best match
+# Per-document-type limits on chunks per answer. There are 50+ syllabi with
+# lots of repeated text, so they could otherwise fill every slot.
+MAX_PER_DOC_TYPE = {"syllabi": 3}
 
 # --- Answering (Phase 3) -----------------------------------------------------
 # If the best chunk's similarity score is below this, skip the LLM and say the

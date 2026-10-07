@@ -196,35 +196,51 @@ def nearest_header(headers: list[str], i: int) -> str:
 def table_to_text(rows: list[list[str]], state: dict) -> str:
     """Turn a table into one line per row, like 'Day: MWF | Room: ECJ 1.214'.
 
-    - The first row is treated as the column headers. If the second row only
-      fills in under existing headers (e.g. 'Area' over '1', '2', '3'), it is
-      merged into them.
+    - A lone cell at the top is a table title. Short titles become the label
+      (see below) and mean the table has no header row.
+    - Otherwise the first row is the column headers. If the next row
+      only adds short bits under existing headers (e.g. 'Area' over '1', '2',
+      '4A'), it is merged into them.
     - When the header row repeats later, it's skipped. If it has a new name in
       some column (e.g. 'Other engineering courses' replacing 'ChE courses'),
       that column's header is updated.
-    - A row with one filled cell of 3+ words (like 'CHE 319 TRANSPORT
+    - A row with one filled cell of 3-12 words (like 'CHE 319 TRANSPORT
       PHENOMENA') is a group label, prefixed to the rows under it so each line
-      stands alone. A shorter lone cell is wrapped text and joins the line above.
+      stands alone. A shorter lone cell is wrapped text and joins the line
+      above; a longer one is kept as its own line.
+    - A blank first cell under a merged (multi-row) cell, like 'Math' spanning
+      four AP Calculus rows, is filled in from the row above.
     `state` carries the headers and label across pages of the same document.
     """
     rows = [[fix_cell(c) for c in row] for row in rows]
     rows = [r for r in rows if any(r)]
-    if not rows:
-        return ""
-
-    first = rows[0]
-    if sum(bool(c) for c in first) >= 2 and not state.get("headers"):
-        headers, rows = first, rows[1:]
-        if rows:
-            second = rows[0]
-            filled = [i for i, c in enumerate(second) if c]
-            if len(filled) >= 2 and all(i < len(headers) and headers[i] for i in filled):
-                headers = [f"{h} {s}".strip() for h, s in zip(headers, second)]
-                rows = rows[1:]
-        state["headers"] = headers
-    headers = state.get("headers", [])
-
     lines: list[str] = []
+
+    if not state.get("headers"):
+        titled = False
+        while rows and sum(bool(c) for c in rows[0]) < 2:  # title row(s) above the table
+            title = next(c for c in rows.pop(0) if c)
+            if 3 <= len(title.split()) <= 12:
+                state["label"] = title
+            else:
+                lines.append(title)
+            titled = True
+        # A titled table (like 'CH 302 Requirement' over plain rows) has no header row.
+        if rows and not titled:
+            headers, rows = rows[0], rows[1:]
+            if rows:
+                second = rows[0]
+                filled = [i for i, c in enumerate(second) if c]
+                if (len(filled) >= 2 and all(len(second[i]) <= 4 for i in filled)
+                        and all(i < len(headers) and headers[i] for i in filled)):
+                    headers = [f"{h} {s}".strip() for h, s in zip(headers, second)]
+                    rows = rows[1:]
+            state["headers"] = headers
+    headers = state.get("headers", [])
+    # Column 0 can only be a merged cell if column 1 has a header of its own
+    # (otherwise column 1 is just overflow from column 0, as in Tech Electives).
+    fill_down = len(headers) > 1 and bool(headers[0]) and bool(headers[1])
+
     for row in rows:
         filled = [c for c in row if c]
         if is_header_row(row, headers):
@@ -233,11 +249,19 @@ def table_to_text(rows: list[list[str]], state: dict) -> str:
                     headers[i] = c
             continue
         if len(filled) == 1 and len(row) > 2:
-            if len(filled[0].split()) >= 3:
+            words = len(filled[0].split())
+            if 3 <= words <= 12:
                 state["label"] = filled[0]
-            elif lines:
+            elif words > 12 or not lines:
+                lines.append(filled[0])
+            else:
                 lines[-1] += " " + filled[0]
             continue
+        if fill_down:
+            if row[0]:
+                state["above"] = row[0]
+            elif state.get("above"):
+                row = [state["above"]] + row[1:]
         parts = []
         for i, cell in enumerate(row):
             if not cell:
@@ -368,16 +392,27 @@ def load_html(path: Path) -> list[Unit]:
 
 
 def load_text(path: Path) -> list[Unit]:
-    """Read .txt/.md: blank lines separate paragraphs; '#' lines are headings."""
+    """Read .txt/.md: blank lines separate paragraphs; '#' lines are headings.
+    A heading is kept in the same unit as the paragraph after it, so a chunk
+    never ends up with a list but not the heading saying what the list is."""
     units: list[Unit] = []
     section = ""
+    pending_heading = ""
     for para in re.split(r"\n\s*\n", path.read_text(encoding="utf-8", errors="ignore")):
         lines = [clean_line(l) for l in para.splitlines() if clean_line(l)]
         if not lines:
             continue
         if lines[0].startswith("#"):
             section = lines[0].lstrip("#").strip()
-        units.append({"text": "\n".join(lines), "page": None, "section": section, "kind": "text"})
+            if len(lines) == 1:  # heading on its own: attach it to what follows
+                pending_heading = section
+                continue
+        text = "\n".join(lines)
+        if pending_heading:
+            text, pending_heading = f"{pending_heading}\n{text}", ""
+        units.append({"text": text, "page": None, "section": section, "kind": "text"})
+    if pending_heading:
+        units.append({"text": pending_heading, "page": None, "section": section, "kind": "text"})
     return units
 
 
@@ -437,9 +472,14 @@ def chunk_units(units: list[Unit], size: int, overlap: int) -> list[dict]:
     for piece in pieces:
         new_words = sum(word_count(u["text"]) for u in current[carried:])
         too_full = sum(word_count(u["text"]) for u in current) + word_count(piece["text"]) > size
-        # Close the chunk when it's full, unless it's still tiny (e.g. a title
-        # right before a big table); then it absorbs the next piece instead.
-        if too_full and new_words >= config.MIN_CHUNK_WORDS:
+        # A new heading (docx/html/md files) starts a new chunk, so each chunk
+        # covers one topic, e.g. one semester of the degree plan.
+        new_section = bool(current) and piece["section"] != current[-1]["section"]
+        # Close the chunk when it's full or a section ends, unless it's still
+        # tiny (e.g. a title right before a big table); then it absorbs the
+        # next piece instead. A finished section may be half the usual minimum.
+        big_enough = new_words >= (config.MIN_CHUNK_WORDS // 2 if new_section else config.MIN_CHUNK_WORDS)
+        if (too_full or new_section) and big_enough:
             groups.append(current)
             # Carry trailing units forward as overlap, as long as they fit.
             carry: list[Unit] = []
@@ -451,6 +491,8 @@ def chunk_units(units: list[Unit], size: int, overlap: int) -> list[dict]:
                 # Last paragraph is too long to carry whole: carry its tail.
                 tail = " ".join(current[-1]["text"].split()[-overlap:])
                 carry = [{**current[-1], "text": "..." + tail}]
+            if new_section:
+                carry = []  # no overlap across a section boundary
             current, carried = carry, len(carry)
         current.append(piece)
 
@@ -495,13 +537,17 @@ def process_file(path: Path) -> list[dict]:
         "doc_type": doc_type_for(path),
         "catalog_year": year,
     }
-    return [{**meta, **c, "chunk_index": i} for i, c in enumerate(chunks)]
+    return [{**meta, **c, "chunk_index": i,
+             "courses": " ".join(sorted(rag.course_keys(f"{meta['title']} {c['text']}")))}
+            for i, c in enumerate(chunks)]
 
 
 def supported_files() -> list[Path]:
     """Files we have a loader for; anything else is reported and skipped."""
     files = []
     for path in find_files():
+        if str(path.relative_to(config.RAW_DIR)) in config.SKIP_FILES:
+            continue
         if path.suffix.lower() in LOADERS:
             files.append(path)
         else:
@@ -530,9 +576,18 @@ def load_all() -> list[dict]:
 # Embed and store (Phase 2)
 # --------------------------------------------------------------------------
 
+# Bump this when ingest.py changes how chunks are made, so every file is
+# re-processed on the next run even though the files themselves didn't change.
+PIPELINE_VERSION = "4"
+
+
 def file_hash(path: Path) -> str:
-    """Fingerprint of a file's contents; it changes whenever the file changes."""
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """Fingerprint of a file plus the settings used to chunk and embed it.
+    It changes when the file changes, or when chunking settings, the
+    embedding model, or PIPELINE_VERSION change."""
+    settings = (f"{PIPELINE_VERSION}|{config.CHUNK_SIZE_WORDS}|{config.CHUNK_OVERLAP_WORDS}|"
+                f"{config.MIN_CHUNK_WORDS}|{config.EMBEDDING_MODEL}")
+    return hashlib.sha256(path.read_bytes() + settings.encode()).hexdigest()
 
 
 def stored_hashes(collection) -> dict[str, str]:
@@ -554,7 +609,7 @@ def embed_and_store() -> None:
 
     for source in sorted(set(already) - current):
         collection.delete(where={"source": source})
-        print(f"  removed (file deleted): {unquote(source)}")
+        print(f"  removed (deleted or in SKIP_FILES): {unquote(source)}")
 
     added = unchanged = 0
     for path in files:
