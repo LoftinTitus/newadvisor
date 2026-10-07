@@ -1,0 +1,54 @@
+question,expected_source,expected_answer
+Which technical areas does CHE 339 count for?,Tech Electives,"Area 4A, Area 4B, and Area 5."
+How many technical electives do I need and from how many areas?,Tech Electives,"Four electives in one technical area, or two in each of two areas; at least two must be engineering courses and at least one of those a CHE course."
+When does the intent to graduate form close for Fall 2026?,ess intranet,October 27 (it opens August 24).
+Who teaches CHE 360 in the spring?,spring schedule,Ilias Mitrai (16610) and Thomas Badgwell (16615).
+What time does CHE 322 meet in the spring?,spring schedule,"Three sections: TTH 11:00-12:30 plus W 2:00-4:00 (Ganesan; Johnston), and MTWTHF 11:30-2:30 (Zheng)."
+Do transfer physics grades count toward my technical GPA?,ess intranet,No. Transfer credit can fulfill the requirement (with a C or higher) but the grade is not added to the technical GPA.
+How do I claim AP credit?,How to Claim AP Credit,
+What AP Calculus BC score do I need to get credit for M 408C?,Course Credits to Claim,A 3-4 gives M 408C; a 5 gives M 408C (or M 408K and M 408L).
+What AP Chemistry score gets me credit for CH 301 and CH 302?,Course Credits to Claim,"4-5, which gives CH 301, CH 302, and CH 104M/N."
+How long are AP scores valid?,How to Claim AP Credit,10 years.
+Should I see ChE advising or ESS advising about Q-drops?,Advising,"ESS (Engineering Student Services) advising handles drops, withdrawals, and OTEs."
+Is faculty advising required?,Advising,Required for the first 3 semesters; optional after that.
+What is the latest semester I can take CHE 317 and still graduate in 4 years?,Latest You Can Take,Spring 2 (spring of the second year).
+What are the prerequisites for CHE 354?,Prerequisite Flowchart|Suggested Arrangement|cheme course descriptions,CHE 319.
+Which courses can I take in place of CH 328M?,Acceptable CH Courses,"CH 320M, only if you can't register for a section of CH 328M (time conflict or closed)."
+What courses count for the 4-hour chemistry elective?,4 hr ch elective,
+How many hours can an engineering student register for without approval?,academic-policies,17 semester hours.
+Can I repeat a course in which I earned a C?,academic-policies,"No, not for a letter grade: Cockrell students may not repeat a course in which they earned a C- or better."
+How many times can I enroll in a lower division engineering course?,academic-policies,At most twice; a Q or W counts as an enrollment unless ESS recognizes it as nonacademic.
+How do I make a 4-year plan in Navigate?,Navigate 4-Year Plan,
+How do I submit my 4-year plan?,How To Submit,"In Navigate, use the 3 dots on My Academic Plan > Print > Save as PDF, then submit that PDF in the Navigate 4-Year Plan Canvas assignment."
+How many hours a week is CHE 377K research for credit?,Research for Credit,9 hours weekly.
+How do I install Aspen on my laptop?,Aspen,"Be on UTEXAS Wi-Fi or the UT VPN, map the network drive \\austin.utexas.edu\disk\che-share\aspenONE\V14, install, and copy config.aem to C:\ProgramData\AspenTech\APED V14.0. Mac users use remote desktop or VMware."
+Who is the undergraduate academic advisor in chemical engineering?,che contact info|Advising,"Marco Martinez-Trejo, Undergraduate Senior Academic Advisor."
+What are the requirements to join the engineering honors program after my first year?,ess intranet,"At least 24 hours in residence in the Cockrell School, at least 60 hours remaining in the degree, and rank in the top 10 percent of class and department."
+Which humanities courses satisfy the core?,core list,"E 316L, E 316M, E 316N, or E 316P (prerequisite RHE 306)."
+What are the options for the government requirement?,core list,Option 1: GOV 310L or CIV 303C and GOV 312L or 312P. Option 2: GOV 310L or CIV 303C and GOV 305C or 306C. Option 3: GOV 306C and GOV 305C.
+What is CHE 339 about?,cheme course descriptions,"Introduction to Biochemical Engineering: microorganisms in chemical and biochemical syntheses, genetic manipulation of cells, enzyme technology, bioreactor and fermentation design, and separations of biological products."
+What topics does M 427J cover?,non che stem,
+What semester should I take CHE 350?,Suggested Arrangement|Latest You Can Take,Suggested in fall of the fourth year (semester 7); the latest is spring of the fourth year.
+What is the grading breakdown in Freeman's CHE 317?,Freeman,"Homework 10%, in-class quizzes 5%, tests 60%, final exam 25%."
+When are the exams in Kumar's CHE 363?,Kumar,"Unit exams Feb 12, March 12, and April 16; final Saturday May 2, 8-10 AM."
+Can I take engineering courses before transferring into engineering?,ess intranet,"Possibly, for introductory courses in some departments, but it isn't required to apply."
+How do I check prerequisite alerts in Navigate?,Step-by-Step,
+What textbook does CHE 363 use?,363,"Kumar's section: McCabe, Smith and Harriott, Unit Operations of Chemical Engineering."
+I got a 4 on the AP chem exam. What credit does that give me?,Course Credits to Claim,"CH 301, CH 302, and CH 104M/N."
+If I fail thermo can I just retake it?,academic-policies|ess intranet,Cockrell students may not repeat a course for a letter grade if they earned a C- or better; a failing grade can be repeated. Talk to an advisor first.
+How long can I put off transport phenomena and still finish on time?,Latest You Can Take,CHE 319 can be taken as late as fall of the third year (Fall 3).
+What's the deadline to apply to graduate this fall?,ess intranet,The Fall 2026 intent to graduate form closes October 27.
+Which professor is teaching process control next spring?,spring schedule,Ilias Mitrai and Thomas Badgwell.
+What do I need to finish before I can take reactor design?,Suggested Arrangement|Prerequisite Flowchart,"CHE 372 requires CHE 322, CHE 348, and CHE 354."
+Is there a limit on how many credit hours I can take in one semester?,academic-policies,17 hours without an approved application.
+Can I substitute a different organic chem class?,Acceptable CH Courses,
+Which electives count toward the biomedical engineering track?,Tech Electives,
+Do I have to meet with my faculty advisor every semester?,Advising,Only during your first 3 semesters; optional after.
+How do I get credit for working in a research lab?,Research for Credit,
+How many total hours is the chemical engineering degree?,Suggested Arrangement,129 credit hours.
+Who do I talk to about dropping a class?,Advising|ess intranet,ESS (Engineering Student Services) advising.
+Which chemistry classes with a lab can I use for my chem elective?,4 hr ch elective,
+Do my AP scores expire?,How to Claim AP Credit,They are valid for 10 years.
+Do grades from community college count in my GPA?,ess intranet,"No; transfer grades aren't included in the technical GPA, which uses only in-residence courses."
+What classes should I take my first semester?,Suggested Arrangement,"CH 302, CH 104M, CHE 102 (optional), CHE 210, M 408C, RHE 306, and a social and behavioral sciences course."
+Does transport processes count if I take it at another school?,ess intranet|Acceptable CH|academic-policies,

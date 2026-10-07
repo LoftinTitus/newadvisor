@@ -26,8 +26,13 @@ import prompts
 
 @lru_cache(maxsize=1)
 def get_model() -> SentenceTransformer:
-    """Load the embedding model once (first call downloads it, ~130 MB)."""
-    return SentenceTransformer(config.EMBEDDING_MODEL)
+    """Load the embedding model once. Uses the copy already downloaded to this
+    computer, so a slow or missing internet connection can't hang startup;
+    only the very first run downloads it (~130 MB)."""
+    try:
+        return SentenceTransformer(config.EMBEDDING_MODEL, local_files_only=True)
+    except OSError:  # not downloaded yet
+        return SentenceTransformer(config.EMBEDDING_MODEL)
 
 
 @lru_cache(maxsize=1)
@@ -176,10 +181,12 @@ def retrieve(question: str, top_k: int = config.TOP_K,
     ok_years = [y for y in years if year_matches(y, catalog_year)]
     where = {"catalog_year": {"$in": ok_years}} if catalog_year else None
     query_vec = embed_query(question)
-    result = collection.query(query_embeddings=[query_vec], n_results=pool, where=where)
-    hits = {cid: {"text": text, "metadata": meta, "score": 1 - dist}  # distance = 1 - similarity
-            for cid, text, meta, dist in zip(result["ids"][0], result["documents"][0],
-                                             result["metadatas"][0], result["distances"][0])}
+    result = collection.query(query_embeddings=[query_vec], n_results=pool, where=where,
+                              include=["documents", "metadatas", "distances", "embeddings"])
+    hits = {cid: {"text": text, "metadata": meta, "score": 1 - dist, "vec": vec}  # distance = 1 - similarity
+            for cid, text, meta, dist, vec in zip(result["ids"][0], result["documents"][0],
+                                                  result["metadatas"][0], result["distances"][0],
+                                                  result["embeddings"][0])}
     by_meaning = list(hits)
 
     allowed = ({cid for cid, m in metas.items() if m["catalog_year"] in ok_years}
@@ -191,7 +198,7 @@ def retrieve(question: str, top_k: int = config.TOP_K,
     if missing:
         got = collection.get(ids=missing, include=["documents", "metadatas", "embeddings"])
         for cid, text, meta, vec in zip(got["ids"], got["documents"], got["metadatas"], got["embeddings"]):
-            hits[cid] = {"text": text, "metadata": meta,
+            hits[cid] = {"text": text, "metadata": meta, "vec": vec,
                          "score": float(sum(a * b for a, b in zip(query_vec, vec)))}
 
     # Reciprocal rank fusion: 1/(k + rank) from each list, summed.
@@ -210,13 +217,17 @@ def retrieve(question: str, top_k: int = config.TOP_K,
             continue
         meta = hits[cid]["metadata"]
         type_cap = config.MAX_PER_DOC_TYPE.get(meta["doc_type"], top_k)
-        if per_source[meta["source"]] < config.MAX_PER_SOURCE and per_type[meta["doc_type"]] < type_cap:
+        # Two sections' syllabi often share whole paragraphs; keep one copy.
+        duplicate = any(sum(a * b for a, b in zip(hits[cid]["vec"], kept["vec"])) > config.DUPLICATE_SIMILARITY
+                        for kept in results)
+        if (not duplicate and per_source[meta["source"]] < config.MAX_PER_SOURCE
+                and per_type[meta["doc_type"]] < type_cap):
             results.append(hits[cid])
             per_source[meta["source"]] += 1
             per_type[meta["doc_type"]] += 1
         if len(results) == top_k:
             break
-    return results
+    return [{k: v for k, v in hit.items() if k != "vec"} for hit in results]
 
 
 def catalog_range(year: str) -> tuple[int, int] | None:

@@ -24,7 +24,9 @@ catalog year or term. Curriculum and policies documents apply to all ChE
 students. Syllabi describe one instructor's section in one semester, so
 details like grading, exams, and office hours can differ between sections
 and terms; say which syllabus and term a detail comes from, and prefer the
-most recent term when they differ.
+most recent term when they differ. In the course catalog descriptions, an X
+in a course number stands for the credit-hours digit: "CHE X39" is the
+catalog entry for CHE 339.
 
 Formatting: use only inline citations like [1] or [2][3]. Do not write your
 own list of sources at the end; one is added automatically."""

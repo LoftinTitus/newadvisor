@@ -48,6 +48,7 @@ RRF_K = 60  # rank-fusion constant; the standard value, rarely needs changing
 KEYWORD_WEIGHT = 1.0  # how much the keyword ranking counts vs. the meaning ranking (1.0)
 MAX_PER_SOURCE = 2  # at most this many chunks from any one file per answer
 MAX_SCORE_GAP = 0.12  # drop chunks this much less similar than the best match
+DUPLICATE_SIMILARITY = 0.95  # two results more alike than this are copies; keep one
 # Per-document-type limits on chunks per answer. There are 50+ syllabi with
 # lots of repeated text, so they could otherwise fill every slot.
 MAX_PER_DOC_TYPE = {"syllabi": 3}

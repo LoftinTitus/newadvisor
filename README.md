@@ -11,15 +11,20 @@ You need Python 3.13. On this Mac it's at `/opt/homebrew/bin/python3.13`.
 Newer versions like 3.14 may not work with every library yet.
 
 1. **Create a virtual environment.** This is a private folder of libraries
-   just for this project:
+   just for this project. It goes in your home folder, *not* inside
+   Documents: Documents is synced by iCloud, and syncing the environment's
+   thousands of files makes everything crawl (searches took minutes instead
+   of seconds).
    ```
-   /opt/homebrew/bin/python3.13 -m venv venv
+   /opt/homebrew/bin/python3.13 -m venv ~/.venvs/newadvisor
    ```
 2. **Turn it on.** Do this every time you open a new terminal:
    ```
-   source venv/bin/activate
+   source ~/.venvs/newadvisor/bin/activate
    ```
-   Your prompt will start with `(venv)`.
+   Your prompt will start with `(newadvisor)`. In VS Code, pick it as the
+   interpreter: Command Palette > "Python: Select Interpreter" > enter
+   `~/.venvs/newadvisor/bin/python`.
 3. **Install the libraries:**
    ```
    pip install -r requirements.txt
@@ -49,7 +54,7 @@ Then open http://localhost:8501. It only runs while that terminal is open; press
 
 ## Using it from the terminal
 
-Run these with the venv turned on (`source venv/bin/activate`).
+Run these with the virtual environment turned on (`source ~/.venvs/newadvisor/bin/activate`).
 
 | Command | What it does |
 | --- | --- |
