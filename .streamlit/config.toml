@@ -1,0 +1,8 @@
+# Streamlit settings for this project.
+[server]
+address = "localhost"  # only this computer can open the page (not others on your Wi-Fi)
+port = 8501
+headless = true        # don't ask for an email on first run
+
+[browser]
+gatherUsageStats = false

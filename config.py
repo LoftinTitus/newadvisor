@@ -52,6 +52,10 @@ MAX_SCORE_GAP = 0.12  # drop chunks this much less similar than the best match
 # lots of repeated text, so they could otherwise fill every slot.
 MAX_PER_DOC_TYPE = {"syllabi": 3}
 
+# UT catalogs run two years. These are the choices in the web page's
+# "catalog year" selector, newest first.
+CATALOG_YEARS = ["2026-28", "2024-26", "2022-24", "2020-22"]
+
 # --- Answering (Phase 3) -----------------------------------------------------
 # If the best chunk's similarity score is below this, skip the LLM and say the
 # documents don't cover the question. In testing, real advising questions

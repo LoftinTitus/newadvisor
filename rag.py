@@ -163,15 +163,18 @@ def retrieve(question: str, top_k: int = config.TOP_K,
     any one file, and config.MAX_PER_DOC_TYPE limits how many come from
     syllabi, so five syllabi for the same course can't crowd out the degree plan.
 
-    If catalog_year is given, only chunks from that year, plus chunks whose
-    year is unknown (most policies and handouts), are searched.
+    If catalog_year is given (e.g. "2026-28"), chunks tied to a different
+    catalog are left out; see year_matches().
     """
     collection = get_collection()
     if collection.count() == 0:
         raise SystemExit("The database is empty. Run: python ingest.py")
 
     pool = top_k * config.CANDIDATE_MULTIPLIER
-    where = {"catalog_year": {"$in": [catalog_year, "unknown"]}} if catalog_year else None
+    index, metas = keyword_index(collection.count())
+    years = {m["catalog_year"] for m in metas.values()}
+    ok_years = [y for y in years if year_matches(y, catalog_year)]
+    where = {"catalog_year": {"$in": ok_years}} if catalog_year else None
     query_vec = embed_query(question)
     result = collection.query(query_embeddings=[query_vec], n_results=pool, where=where)
     hits = {cid: {"text": text, "metadata": meta, "score": 1 - dist}  # distance = 1 - similarity
@@ -179,8 +182,7 @@ def retrieve(question: str, top_k: int = config.TOP_K,
                                              result["metadatas"][0], result["distances"][0])}
     by_meaning = list(hits)
 
-    index, metas = keyword_index(collection.count())
-    allowed = ({cid for cid, m in metas.items() if m["catalog_year"] in (catalog_year, "unknown")}
+    allowed = ({cid for cid, m in metas.items() if m["catalog_year"] in ok_years}
                if catalog_year else None)
     by_keyword = index.search(question, allowed, pool)
 
@@ -217,10 +219,29 @@ def retrieve(question: str, top_k: int = config.TOP_K,
     return results
 
 
+def catalog_range(year: str) -> tuple[int, int] | None:
+    """'2026-28' -> (2026, 2028). None for terms like 'Fall 2026', 'unknown', etc."""
+    m = re.fullmatch(r"(20\d\d)-(\d\d)", year)
+    return (int(m.group(1)), 2000 + int(m.group(2))) if m else None
+
+
+def year_matches(chunk_year: str, selected: str | None) -> bool:
+    """Should a chunk be searched when the student picked catalog `selected`?
+
+    Only chunks tied to a *different* catalog are excluded. Chunks with a
+    catalog range overlapping the selection are kept (Tech Electives
+    "2020-28" covers every catalog from 2020 on), and so is everything not
+    tied to a catalog: syllabi (labeled by term) and undated handouts.
+    """
+    chunk, picked = catalog_range(chunk_year), catalog_range(selected or "")
+    if picked is None or chunk is None:
+        return True
+    return chunk[0] < picked[1] and picked[0] < chunk[1]
+
+
 def catalog_years() -> list[str]:
-    """All catalog_year values in the database (for the UI's year selector)."""
-    metas = get_collection().get(include=["metadatas"])["metadatas"]
-    return sorted({m["catalog_year"] for m in metas} - {"unknown"})
+    """Catalog choices for the UI's year selector, newest first."""
+    return config.CATALOG_YEARS
 
 
 def describe(meta: dict) -> str:
@@ -342,7 +363,7 @@ def main() -> None:
     parser.add_argument("--ask", metavar="QUESTION", help="answer a question with citations")
     parser.add_argument("--chat", action="store_true", help="multi-turn chat in the terminal")
     parser.add_argument("--debug", action="store_true", help="with --chat, show the search query")
-    parser.add_argument("--year", help="limit to one catalog year, e.g. '2026-28'")
+    parser.add_argument("--year", help="student's catalog, e.g. '2026-28' (leaves out other catalogs' documents)")
     parser.add_argument("--top-k", type=int, default=config.TOP_K)
     args = parser.parse_args()
 

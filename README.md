@@ -39,7 +39,15 @@ python -c "import config; print('ok')"
 
 This should print `ok` and nothing else.
 
-## Using it
+## The website
+
+```
+streamlit run app.py
+```
+
+Then open http://localhost:8501. It only runs while that terminal is open; press Ctrl+C to stop it. Settings for the page (like only allowing your own computer to open it) are in `.streamlit/config.toml`.
+
+## Using it from the terminal
 
 Run these with the venv turned on (`source venv/bin/activate`).
 
@@ -72,6 +80,7 @@ If one of those PDFs gets a new version, update its `.md` file too.
 | `ingest.py` | Reads the documents, cleans them, splits them into chunks, and stores them in the database. |
 | `rag.py` | Finds the chunks that match a question (`retrieve`) and asks Claude to answer from them (`answer`). |
 | `prompts.py` | The instructions given to Claude. |
+| `app.py` | The chat website. |
 | `requirements.txt` | The libraries and exact versions this project uses. |
 | `.env.example` | Template for `.env`, which holds your API key. |
 | `data/chroma/` | The search database, built later by `ingest.py`. Not committed. |
